@@ -1,0 +1,345 @@
+#code 
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+df=pd.read_excel("Flight Fare.xlsx")
+
+df.head()
+df.shape
+df.info()
+for i in df.columns:
+    print(i,"--->",df[i].isnull().sum()*100/df.shape[0],"%") 
+
+#we have missing values in column route and total_stops
+df[df["Route"].isnull()]
+df[df["Total_Stops"].isnull()]
+
+#we drop this row since both columns have missing vals in the same row
+df.drop(df.index[9039],inplace=True)
+df["Route"].isnull().sum()
+df["Total_Stops"].isnull().sum()
+for i in df.columns:
+    print(i,"--->",df[i].isnull().sum()*100/df.shape[0],"%")
+
+#Data cleaning
+#Checking if there are any Duplicate values
+df[df.duplicated()]
+
+# Drop duplicates value
+df.drop_duplicates(keep='first',inplace=True)
+df["Additional_Info"].value_counts()
+#combining No info into one
+df["Additional_Info"] = df["Additional_Info"].replace({'No Info': 'No info'})
+df["Additional_Info"].value_counts()
+#checking unique values
+for i in df.columns:
+    print(i,"--->",df[i].unique())
+#replace repeating airline names
+df["Airline"]=df["Airline"].replace("Vistara Premium economy","Vistara")
+df["Airline"]=df["Airline"].replace("Multiple carriers Premium economy","Multiple carriers")
+df["Airline"]=df["Airline"].replace("Jet Airways Business","Jet Airways")
+df["Airline"].unique()
+
+#feature engineering
+df["Duration"]=df["Duration"].str.replace("h","*60").str.replace(" ","+").str.replace("m","*1").apply(eval)
+test_data['Duration']=  test_data['Duration'].str.replace("h", '*60').str.replace(' ','+').str.replace('m','*1').apply(eval)
+df["Duration"]
+#Now on column total_stops we change them from object to numeric
+df["Total_Stops"]=df["Total_Stops"].map({"non-stop":0,"2 stops":2,"1 stop":1,"3 stops":3})
+df.dtypes
+df["Date_of_Journey"]=pd.to_datetime(df["Date_of_Journey"])
+df["Dep_Time"]=pd.to_datetime(df["Dep_Time"])
+df["Arrival_Time"]=pd.to_datetime(df["Arrival_Time"])
+# Extracting  day
+df["day_of_journey"] = df["Date_of_Journey"].dt.day
+
+# Extracting month
+df["month_of_journey"] = df["Date_of_Journey"].dt.month
+
+## Extracting  departure Hours
+df["Dep_hour"] = df["Dep_Time"].dt.hour
+
+# Extracting departure Minutes
+df["Dep_min"] = df["Dep_Time"].dt.minute
+
+## Extracting  arrival Hours
+df["Arrival_hour"] = df["Arrival_Time"].dt.hour
+
+# Extracting arrival Minutes
+df["Arrival_min"] = df["Arrival_Time"].dt.minute
+
+df.drop(columns=['Arrival_hour', 'Arrival_min'])
+x=df[(df["Airline"]=="Air India")&(df["Source"]=="Mumbai")&(df["Destination"]=="Hyderabad")&(df["Total_Stops"]==2)]
+df.loc[6474,"Duration"]=round(x["Duration"].mean(),2)
+df.iloc[6474]
+df
+#EDA WITH RESPECT TO PRICE
+sns.distplot(df["Price"]);
+
+#graph is right skewed which means some flights are expensive than the others
+#Convert categorical data into numerical
+data = df.drop(["Price"], axis=1)
+cat_data = data.select_dtypes(exclude=['int64', 'float','int32'])
+num_data = data.select_dtypes(include=['int64', 'float','int32'])
+
+cat_data.head()
+#Label encode and hot encode categorical columns
+from sklearn.preprocessing import LabelEncoder
+le = LabelEncoder()
+cat_data = cat_data.apply(LabelEncoder().fit_transform)
+
+cat_data.head()
+#Concatenate categorical and  numerical data
+X = pd.concat([cat_data, num_data], axis=1)
+Y=df['Price']
+X.head()
+Y.head()
+#min max avg
+df["Price"].agg(["max","min","mean"])
+#detail of expensive flight
+df[df["Price"]==df["Price"].max()]
+#cheapest flight
+df[df["Price"]==df["Price"].min()]
+m=df[df["Price"]<30000]["Price"].mean()
+m
+len(df[df["Price"]<=m])
+#Most demanding Flight company
+plt.figure(figsize=[10,7])
+sns.countplot(x="Airline",data=df)
+#most expensive flight is of which company
+plt.figure(figsize=[10,7])
+sns.barplot(x="Airline",y="Price",data=df);#How price varies with respect to each flights company
+sns.boxplot(x="Airline",y="Price",data=df);
+plt.xticks(rotation=90)
+plt.title("Flight price price variation with company");
+#the distribution of price is right skewed so it has outliers and most of the
+#flights price is found around 8k to 10k and there are some flights which are extremely expensive
+#How many flights with respect to their stopages¶
+df["Total_Stops"].value_counts()
+sns.countplot(x="Total_Stops",data=df)
+#Find the flight availability with respect to number of stopages¶
+df.groupby(["Total_Stops"])["Airline"].value_counts()
+#Flight avg stoppages
+plt.figure(figsize=(10,9))
+plt.subplot(1,3,1)
+sns.barplot(x="Airline",y="Total_Stops",data=df)
+plt.title("flights with average stoppage")
+plt.xlabel("flights")
+plt.ylabel("total stops")
+plt.xticks(rotation=90)
+
+#Flight max stoppages
+plt.subplot(1,3,2)
+sns.barplot(x="Airline",y="Total_Stops",data=df,estimator=max)
+plt.title("flights with maximum stoppage")
+plt.xlabel("flights")
+plt.ylabel("total stops")
+plt.xticks(rotation=90)
+
+#Flight min stoppages
+plt.subplot(1,3,3)
+sns.barplot(x="Airline",y="Total_Stops",data=df,estimator=min)
+plt.title("flights with min stoppage")
+plt.xlabel("flights")
+plt.ylabel("total stops")
+plt.xticks(rotation=90);
+#How number of stopage, Duration varies with price
+print(df.corr()["Total_Stops"]["Price"])
+print(df.corr()["Duration"]["Price"])
+print(df[["Total_Stops","Duration"]].corr())
+plt.figure(figsize=(14,3))
+plt.subplot(1,3,1)
+plt.scatter(df["Total_Stops"],df["Price"])
+plt.title("total stop vs price")
+plt.xlabel("totalstop")
+plt.ylabel("Price")
+plt.subplot(1,3,2)
+plt.scatter(df["Duration"],df["Price"])
+plt.title("Duration vs price")
+plt.xlabel("Duration")
+plt.ylabel("Price")
+plt.subplot(1,3,3)
+plt.scatter(df["Total_Stops"],df["Duration"])
+plt.title("Duration vs Total stops")
+plt.xlabel("totalstop")
+plt.ylabel("Duration")
+df.groupby(["Source","Destination"])["Airline"].value_counts()
+k=df.groupby(["Source","Destination","Airline"])["Price"].agg(["mean","max","min"])
+k.reset_index(inplace=True)
+k
+k.set_index(["Source","Destination"])
+plt.figure(figsize=(7,6))
+sns.boxplot(x=df["Source"],y=df["Price"],data=df)
+plt.xticks(rotation=90,size=15)
+plt.title("Variation of prices by sources")
+plt.show()
+#Month with max takeoffs
+sns.countplot(x="month_of_journey",data=df);
+#Peak business month
+sns.barplot(x="month_of_journey",y="Price",data=df,estimator=sum);
+#Which flights take off on which month¶
+plt.scatter(df["Airline"],df["month_of_journey"])
+plt.xticks(rotation=90);
+plt.ylabel("months")
+plt.xlabel("airlines")
+plt.yticks([1,2,3,4,5,6,7,8,9,10,11,12])
+plt.title("month with maximum flights take off");
+#How many flights takeoff in each month
+df.groupby(["month_of_journey"])["Airline"].value_counts()
+#How month of journey varies with price
+sns.boxplot(x=df["month_of_journey"],y=df["Price"]);
+#peak day of travel
+sns.relplot(x="day_of_journey",y="Price",data=df,kind="line",estimator=sum)
+plt.xticks(list(range(1,32)),rotation=90);
+
+#BUILDING ML MODEL
+#add column Len_Route insted of Route
+df['Len_Route']=df['Route'].apply(lambda i :len(i))
+df.drop(columns=['Route'],inplace=True)
+# drop columns Date_of_Journey,Dep_Time and Arrival_Time
+df.drop(columns=['Date_of_Journey','Dep_Time','Arrival_Time'],axis=1,inplace=True)
+plt.figure(figsize=(10,5))
+correlation=df.corr()
+sns.heatmap(correlation,vmin=None,
+    vmax=0.8,
+    cmap='crest',
+    annot=True,
+    fmt='.1f',
+    linecolor='white',
+    cbar=True);
+df.corr()['Price']
+#Convert categorical variable into dummy/indicator variables
+df=pd.get_dummies(df)
+df.head()
+data=df[~(df['Price'].isna())]
+data.tail()
+X=data.drop(columns=['Price'])
+y=data['Price']
+X.shape,y.shape
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split,GridSearchCV
+from sklearn.metrics import r2_score,mean_absolute_error,mean_squared_error,accuracy_score,confusion_matrix,median_absolute_error
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBRegressor
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.tree import DecisionTreeRegressor
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30, random_state=24, shuffle =True)
+X_train.shape,X_test.shape,y_train.shape,y_test.shape
+
+Models = [ LinearRegression(), KNeighborsRegressor(),DecisionTreeRegressor(), GradientBoostingRegressor(),RandomForestRegressor(), XGBRegressor()]
+
+Models_columns = ['Model Name', 'R2','mean_squared_error', 'mean_absolute_error']
+Results = pd.DataFrame(columns = ['Model Name', 'R2','mean_squared_error', 'mean_absolute_error'])
+mname= ["" for x in range(len(Models))]
+
+for rows in range(len(Models)):
+
+    mname[rows] = Models[rows].__class__.__name__;
+
+Results['Model Name'] = mname
+Predictions = np.zeros((len(y_test),len(Models)))
+Scores = np.zeros((3,len(Models)))
+X_test.isnull().sum()
+X_test[X_test['Total_Stops'].isnull()]
+X_test['Total_Stops'] = X_test['Total_Stops'].fillna(0)
+X_test.isnull().sum()
+x = 0
+
+for model in Models:
+
+            model.fit(X_train,y_train)
+            Predictions[:,x] = model.fit(X_train,y_train).predict(X_test)
+            Scores[0,x] = r2_score(y_test, Predictions[:,x])
+            Scores[1,x] = mean_squared_error(y_test, Predictions[:,x])
+            Scores[2,x] = mean_absolute_error(y_test, Predictions[:,x])
+
+            x+=1
+
+Results['R2'] =  Scores[0,:]
+Results['mean_squared_error'] = Scores[1,:]
+Results['mean_absolute_error'] = Scores[2,:]
+Results.sort_values(by =  ['R2'], ascending = False, inplace = True)
+Results.head(10)f =  plt.subplots(  figsize=(10,8))
+sns.barplot(data=Results ,x= "R2",y= "Model Name")
+
+f =  plt.subplots(  figsize=(10,8))
+sns.barplot(data=Results ,x= "mean_absolute_error",y= "Model Name")
+f =  plt.subplots(  figsize=(10,8))
+sns.barplot(data=Results ,x= "mean_squared_error",y= "Model Name")
+
+train_scores = []
+test_scores = []
+
+def pred_model(model):
+    # Training model
+    model.fit(X_train,y_train)
+
+    # score of train set
+    train_model_score = model.score(X_train,y_train)
+    train_scores.append(round(train_model_score,2))
+    y_pred_train=model.predict(X_train)
+
+    # score of test set
+    test_model_score = model.score(X_test,y_test)
+    test_scores.append(round(test_model_score,2))
+    y_pred_test=model.predict(X_test)
+
+
+    # Printing results
+    print("Train score :",round(train_model_score,2))
+    print("Test score :",round(test_model_score,2))
+
+    # Plotting Graphs
+    # Residual Plot of train data
+    fig, ax = plt.subplots(1,2,figsize = (10,4))
+    ax[0].set_title('Residual Plot of Train samples')
+    sns.distplot((y_train[:100]-y_pred_train[:100]),hist = False,ax = ax[0])
+    ax[0].set_xlabel('y_train - y_pred_train')
+
+    # Y_test vs Y_train scatter plot
+    ax[1].set_title('y_test vs y_pred_test')
+    ax[1].scatter(x = y_test[:100], y = y_pred_test[:100])
+    ax[1].set_xlabel('y_test')
+    ax[1].set_ylabel('y_pred_test')
+
+    plt.show()
+
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBRegressor
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+lr = LinearRegression()
+pred_model(lr)
+
+RF = RandomForestRegressor(max_depth=50,min_samples_split=20,n_estimators=100)
+pred_model(RF)
+
+XGBR = XGBRegressor()
+pred_model(XGBR)
+
+DT = DecisionTreeRegressor()
+pred_model(DT)
+
+GB = GradientBoostingRegressor()
+pred_model(GB)
+
+KN = KNeighborsRegressor()
+pred_model(KN)
+
+Technique = ["LinearRegression","RandomForestRegressor","XGBRegressor","DecisionTreeRegressor", "GradientBoostingRegressor","KNeighborsRegressor"]
+results=pd.DataFrame({'Model': Technique,'Accuracy(Train)': train_scores,'Accuracy(Test)': test_scores})
+display(results)
+
+f =  plt.subplots(  figsize=(10,8))
+sns.barplot(data=results ,x= 'Accuracy(Test)',y= 'Model')
