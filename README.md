@@ -16,7 +16,7 @@ E.	Gradient Boosting Regressor
 F.	KNeighbors Regressor
 
 After a comparative analysis of several regression models for Flight fare prediction, 
-the model with the highest accuracy among the tested algorithms was the XGBoost Regressor. ]
+the model with the highest accuracy among the tested algorithms was the XGBoost Regressor. 
 This outcome shows how well XGBoost can identify intricate patterns and correlations in the aircraft fare information. 
 Because XGBoost is ensemble-based, it can handle both linear and non-linear correlations in the data with ease, 
 which makes it a reliable option for problems involving fare prediction.
